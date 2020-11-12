@@ -234,10 +234,18 @@ int SSExportObjectsToCSV ( const string &filename, SSObjectVec &objects )
 // Imports objects from CSV-formatted text file (filename).
 // Imported objects are appended to the input vector of SSObjects (objects).
 // Returns number of objects successfully imported.
+//#include <QFile>
+//#include <QIODevice>
 
 int SSImportObjectsFromCSV ( const string &filename, SSObjectVec &objects )
 {
     // Open file; return on failure.
+
+//    QFile myFile(filename.c_str());
+//    int FileDescriptor = myFile.handle();
+//    FILE* file = fopen(FileDescriptor, "r");
+//    if ( ! file )
+//        return 0;
 
     FILE *file = fopen ( filename.c_str(), "r" );
     if ( ! file )

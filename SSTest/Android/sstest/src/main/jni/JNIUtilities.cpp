@@ -52,13 +52,17 @@ extern "C" FILE *android_fopen ( const char *name, const char *mode )
     // not initialized, or path doesn't exist in android asset,
     // just open the file the old fashioned way.
 
-    if ( mode[0] == 'w' || android_asset_manager == NULL )
+    if ( mode[0] == 'w' || android_asset_manager == NULL ){
+        cout<<"Silas mode1:"<<name;
         return fopen ( name, mode );
+    }
     
     AAsset *asset = AAssetManager_open ( android_asset_manager, name, 0 );
-    if ( ! asset )
+    if ( ! asset ){
+        cout<<"Silas mode2:"<<name;
         return fopen(name, mode);
-
+    }
+    cout<<"Silas mode3:"<<name;
     return funopen ( asset, android_read, android_write, android_seek, android_close );
 }
 

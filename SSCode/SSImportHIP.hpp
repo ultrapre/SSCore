@@ -12,7 +12,7 @@
 
 #include <map>
 #include <string>
-
+#include "SSMatrix.hpp"
 #include "SSStar.hpp"
 
 void SSUpdateStarCoordsAndMotion ( double jyear, SSMatrix *pMatrix, SSSpherical &position, SSSpherical &velocity );

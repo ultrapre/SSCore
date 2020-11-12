@@ -10,7 +10,7 @@
 
 #ifndef SSIdentifier_hpp
 #define SSIdentifier_hpp
-
+#include <vector>
 #include <string>
 #include <map>
 
