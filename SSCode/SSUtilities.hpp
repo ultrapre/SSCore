@@ -1,4 +1,4 @@
-// SSUtilities.cpp
+﻿// SSUtilities.cpp
 // SSCore
 //
 // Created by Tim DeBenedictis on 3/23/20.
@@ -30,10 +30,13 @@ template <typename T>  const T &clamp ( const T &value, const T &low, const T &h
 
 #ifdef ANDROID
 extern "C" FILE *android_fopen ( const char *fname, const char *mode );
-#define fopen(name,mode) android_fopen(name,mode)
+//#define fopen(name,mode) android_fopen(name,mode)
 #endif
 
-#define M_2PI (2*M_PI)
+//#define M_2PI (2*M_PI)
+#define M_PI 3.141592653589793
+#define M_2PI 6.283185307179586
+#define M_PI_2 1.570796326794897
 
 string getcwd ( void );
 bool fgetline ( FILE *infile, string &line );

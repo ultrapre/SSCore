@@ -1,9 +1,14 @@
-#include <QGuiApplication>
-#include <QQmlApplicationEngine>
-#include <iostream>
-#include <QApplication>
-#include "mainwindow.h"
-#include <QDebug>
+﻿#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include <QFileDialog>
+#include <QTime>
+#include <QTimer>
+#include <QtConcurrent>
+#include <QFuture>
+#include <QAbstractItemView>
+#include <QTableWidgetItem>
+#include "newdownloader.h"
+//#include "SSTest.cpp"
 
 //  SSTest.cpp
 //  SSCore
@@ -12,8 +17,6 @@
 //  Copyright © 2020 Southern Stars. All rights reserved.
 
 #include <cstdio>
-#include <iostream>
-
 #if defined __APPLE__
 #include <TargetConditionals.h>
 #endif
@@ -21,6 +24,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#include <iostream>
+using namespace std;
 
 #include "SSCoordinates.hpp"
 #include "SSOrbit.hpp"
@@ -37,6 +42,7 @@
 #include "SSEvent.hpp"
 #include "VSOP2013.hpp"
 #include "ELPMPP02.hpp"
+
 
 void exportCatalog ( SSObjectVec &objects, SSCatalog cat, int first, int last )
 {
@@ -201,24 +207,24 @@ void TestStars ( string inputDir, string outputDir )
         cout << "Exported " << numStars << " bright stars to " << outputDir + "/ExportedBrightStars.csv" << endl;
     }
 }
-//#define cout qDebug()
+
 void TestDeepSky ( string inputDir, string outputDir )
 {
     SSObjectVec messier, caldwell;
-    qDebug()<< QString::fromStdString(inputDir) + "/DeepSky/Messier.csv";
+
     int numObjs = SSImportObjectsFromCSV ( inputDir + "/DeepSky/Messier.csv", messier );
-    qDebug() << "Imported " << numObjs << " Messier objects" << endl;
+    cout << "Imported " << numObjs << " Messier objects" << endl;
 
     numObjs = SSImportObjectsFromCSV ( inputDir + "/DeepSky/Caldwell.csv", caldwell );
-    qDebug() << "Imported " << numObjs << " Caldwell objects" << endl;
+    cout << "Imported " << numObjs << " Caldwell objects" << endl;
 
     if ( ! outputDir.empty() )
     {
         numObjs = SSExportObjectsToCSV ( outputDir + "/ExportedMessier.csv", messier );
-        qDebug() << "Exported " << numObjs << " Messier objects to " << QString::fromStdString(outputDir) + "/ExportedMessier.csv" << endl;
+        cout << "Exported " << numObjs << " Messier objects to " << outputDir + "/ExportedMessier.csv" << endl;
 
         numObjs = SSExportObjectsToCSV ( outputDir + "/ExportedCaldwell.csv", caldwell );
-        qDebug() << "Exported " << numObjs << " Caldwell objects to " << QString::fromStdString(outputDir) + "/ExportedCaldwell.csv" << endl;
+        cout << "Exported " << numObjs << " Caldwell objects to " << outputDir + "/ExportedCaldwell.csv" << endl;
     }
 }
 
@@ -371,6 +377,10 @@ void TestEphemeris ( string inputDir, string outputDir )
 
     SSImportObjectsFromCSV ( inputDir + "/SolarSystem/Planets.csv", solsys );
     SSImportObjectsFromCSV ( inputDir + "/SolarSystem/Moons.csv", solsys );
+    //silasComets
+//    SSObjectVec comets;
+    int numComets = SSImportMPCComets ( inputDir + "/SolarSystem/CometsLite.txt", solsys );
+
     cout << "Imported " << solsys.size() << " solar system objects." << endl;
 
     int nsat = SSImportSatellitesFromTLE ( inputDir + "/SolarSystem/Satellites/visual.txt", solsys );
@@ -385,8 +395,10 @@ void TestEphemeris ( string inputDir, string outputDir )
 
     SSDate date ( kGregorian, 0.0, 2020, 4, 15.0, 0, 0, 0.0 );
     SSTime now = SSTime::fromSystem(); // SSTime ( date );
+    now -= 123;
+
     date = SSDate ( now );
-    SSSpherical here = { SSAngle ( SSDegMinSec ( '-', 122, 25, 09.9 ) ), SSAngle ( SSDegMinSec ( '+', 37, 46, 29.7 ) ), 0.026 };
+    SSSpherical here = { SSAngle ( SSDegMinSec ( '+', 110, 0, 0 ) ), SSAngle ( SSDegMinSec ( '+', 21, 0, 0 ) ), 0.026 };
     SSCoordinates coords ( now, here );
 
     cout << format ( "Test Date: %04d/%02hd/%02hd", date.year, date.month, date.day ) << endl;
@@ -417,7 +429,7 @@ void TestEphemeris ( string inputDir, string outputDir )
             if ( p->getIdentifier() == SSIdentifier ( kCatNORADSat, 25544 ) )
                 skip = false;
 
-        if ( skip )
+        if ( skip && p->getType() != kTypeComet)
             continue;
 
         p->computeEphemeris ( coords );
@@ -621,7 +633,7 @@ private:
 #if TARGET_OS_IOS || defined ( ANDROID )
 #include "SSTest.h"
 
-//#define main(argc,argv) _main(argc,argv)
+#define main(argc,argv) _main(argc,argv)
 
 int _main ( int argc, const char *argv[] );
 
@@ -633,14 +645,15 @@ int SSTestMain ( const char *inputpath, const char *outputpath )
     std::cout.rdbuf ( new androidbuf );
 #endif
 
-    return _main ( 3, argv );
+//    return _main ( 3, argv );
 }
 
 #endif
 
 void ExportObjectsToHTM ( const string htmdir, SSObjectVec &objects );
 
-int _main ( int argc, const char *argv[] )
+/**
+int main ( int argc, const char *argv[] )
 {
 // This bit of magic makes UTF-8 output with degree characters appear correctly on the Windows console;
 // see https://www.codeproject.com/Articles/34068/Unicode-Output-to-the-Windows-Console
@@ -660,12 +673,8 @@ int _main ( int argc, const char *argv[] )
         exit ( -1 );
     }
 
-
     string inpath ( argv[1] );
     string outpath ( argv[2] );
-
-    qDebug()<<QString(argv[1]);
-    qDebug()<<QString(argv[2]);
 
 
     TestELPMPP02 ( "/Users/timmyd/Projects/SouthernStars/Projects/Astro Code/ELPMPP02/Chapront/" );
@@ -715,6 +724,7 @@ int _main ( int argc, const char *argv[] )
     exportCatalog ( objects, kCatMessier, 1, 110 );
     exportCatalog ( objects, kCatCaldwell, 1, 110 );
 */
+/*
     SSIdentifierMap hipHRMap;
     int n = SSImportHIPHRIdentifiers ( "/Users/timmyd/Projects/SouthernStars/Catalogs/Hipparcos/TABLES/IDENT3.DOC", hipHRMap );
     cout << "Imported " << n << " Hipparcos HR identifiers." << endl;
@@ -775,6 +785,7 @@ int _main ( int argc, const char *argv[] )
 
     return 0;
 }
+**/
 
 #include "SSHTM.hpp"
 
@@ -799,34 +810,530 @@ void ExportObjectsToHTM ( const string htmdir, SSObjectVec &objects )
     cout << "HTM has " << htm.countRegions() << " regions and " << htm.countStars() << " stars." << endl;
 }
 
+#include <QTimer>
 
-int main(int argc, char *argv[])
+////////////
+/// \brief MainWindow::MainWindow
+/// \param parent
+///
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
 {
-//    std::cout<<"HW";
-//    return 0;
-//    QApplication a(argc, argv);
-//    MainWindow w;
-//    w.show();
-//    return a.exec();
+    ui->setupUi(this);
 
-//    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-//    QGuiApplication app(argc, argv);
-//    QQmlApplicationEngine engine;
-//    const QUrl url(QStringLiteral("qrc:/main.qml"));
-//    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-//                     &app, [url](QObject *obj, const QUrl &objUrl) {
-//        if (!obj && url == objUrl)
-//            QCoreApplication::exit(-1);
-//    }, Qt::QueuedConnection);
-//    engine.load(url);
+    //runtime
+    QTimer *timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(updateUI()));
+    timer->start(1);
 
-    qDebug()<<"Silas: WH";
-//    char fack_argv[3][100] {"1","assets:/SSData","/sdcard/0z"};
-//    _main(3,(const char **)fack_argv);
-    TestDeepSky ("assets:/SSData","/sdcard/0z");
-    TestDeepSky ("SSData","/sdcard/0z");
-    TestDeepSky ("/sdcard/0z/SSData","/sdcard/0z");
-    qDebug()<<"Silas: FN";
+#ifdef Q_OS_ANDROID
+    ui->lineEdit->setText(QDir::homePath()+"/SSData");
+    ui->lineEdit_2->setText(QDir::homePath()+"");
+#endif
+}
 
-//    return app.exec();
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::updateUI(){
+    QCoreApplication::processEvents();
+    ui->lineEdit_3->setText(QTime::currentTime().toString("hh:mm:ss.zzz"));
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestDeepSky(inpath, outpath);
+}
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"));
+    ui->lineEdit->setText(dir);
+}
+
+void MainWindow::on_pushButton_3_clicked()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"));
+    ui->lineEdit_2->setText(dir);
+}
+
+
+void MainWindow::on_pushButton_4_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestStars (inpath, outpath);
+}
+
+void MainWindow::on_pushButton_5_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestEphemeris ( inpath, outpath );
+}
+
+void MainWindow::on_pushButton_6_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestSatellites ( inpath, outpath );
+}
+
+void MainWindow::on_pushButton_7_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestSolarSystem( inpath, outpath );
+}
+
+void MainWindow::on_pushButton_8_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestConstellations( inpath, outpath );
+}
+
+void MainWindow::on_pushButton_9_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestJPLDEphemeris( inpath);
+}
+
+void MainWindow::on_pushButton_10_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestELPMPP02( inpath);
+}
+
+void MainWindow::on_pushButton_11_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestVSOP2013( inpath);
+}
+
+void MainWindow::on_pushButton_12_clicked()
+{
+    TestPrecession();
+}
+
+void MainWindow::on_pushButton_13_clicked()
+{
+    TestTime();
+}
+
+//排列判断
+bool compareVMagData(SSPlanet * &p1, SSPlanet * &p2)
+{
+    if (p1->getMagnitude() < p2->getMagnitude())
+    {
+        return true;
+    }
+    return false;
+}
+
+void TestCometsList( string inputDir, string outputDir )
+{
+    SSObjectVec solsys;
+
+//    SSPlanet::useVSOPELP ( false );
+//    string ephemFile = inputDir + "/SolarSystem/DE438/1950_2050.438";
+//    if ( SSJPLDEphemeris::open ( ephemFile ) )
+//        cout << "Successfully opened JPL DE438 ephemeris file." << endl;
+//    else
+//        cout << "Failed to open JPL DE438 ephemeris file " << ephemFile << endl;
+
+    int numComets = SSImportMPCComets ( inputDir + "/SolarSystem/cometelements", solsys );
+
+//    cout << "Imported " << solsys.size() << " solar system objects." << endl;
+
+//    int nsat = SSImportSatellitesFromTLE ( inputDir + "/SolarSystem/Satellites/visual.txt", solsys );
+//    cout << "Imported " << nsat << " artificial satellites." << endl;
+
+//    int nnames = SSImportMcNames ( inputDir + "/SolarSystem/Satellites/mcnames.txt", solsys );
+//    cout << "Imported " << nnames << " McCants satellite names." << endl;
+
+//    SatFreqMap satfreqs;
+//    int nfreqs = SSImportSatelliteFrequencyData ( inputDir + "/SolarSystem/Satellites/je9pel.csv", satfreqs );
+//    cout << "Imported " << nfreqs << " JE9PEL satellite radio frequencies." << endl << endl;
+
+    SSDate date ( kGregorian, 0.0, 2020, 4, 15.0, 0, 0, 0.0 );
+    SSTime now = SSTime::fromSystem(); // SSTime ( date );
+//    now -= 123;
+
+    date = SSDate ( now );
+    SSSpherical here = { SSAngle ( SSDegMinSec ( '+', 110, 0, 0 ) ), SSAngle ( SSDegMinSec ( '+', 21, 0, 0 ) ), 0.026 };
+    SSCoordinates coords ( now, here );
+
+    cout << format ( "Test Date: %04d/%02hd/%02hd", date.year, date.month, date.day ) << endl;
+    cout << format ( "Test Time: %02hd:%02hd:%04.1f", date.hour, date.min, date.sec ) << endl;
+    cout << format ( "Test Zone: %+.1f hours", date.zone ) << endl;
+    cout << format ( "Test Longitude: %s", SSDegMinSec ( here.lon ).toString().c_str() ) << endl;
+    cout << format ( "Test Latitude:  %s", SSDegMinSec ( here.lat ).toString().c_str() ) << endl;
+    cout << format ( "Test Altitude:  %.0f m", here.rad * 1000.0 ) << endl << endl;
+
+//    ui->textBrowser->append(QString::fromStdString(format ( "Test Date: %04d/%02hd/%02hd", date.year, date.month, date.day )));
+
+    coords.setAberration ( true );
+    coords.setLightTime ( true );
+
+//    TestEvents ( coords, solsys );
+
+    // Compute and print ephemeris of solar system objects.
+
+    coords.setTime ( now );
+
+    QList<SSPlanet*> cometslist;
+
+    for ( int i = 0; i < solsys.size(); i++ )
+    {
+        SSPlanet *p = SSGetPlanetPtr ( solsys[i] );
+        if ( p == nullptr )
+            continue;
+
+//        // Skip everything except the first 34 solar system objects and the ISS.
+
+//        bool skip = i < 34 ? false : true;
+//        if ( p->getType() == kTypeSatellite )
+//            if ( p->getIdentifier() == SSIdentifier ( kCatNORADSat, 25544 ) )
+//                skip = false;
+
+//        if ( skip && p->getType() != kTypeComet)
+//            continue;
+
+        p->computeEphemeris ( coords );
+        string con = SSConstellation::identify ( p->getDirection() );
+        SSSpherical dir ( p->getDirection() );
+        dir = coords.transform ( kFundamental, kEquatorial, dir );
+        SSHourMinSec ra ( dir.lon );
+        SSDegMinSec dec ( dir.lat );
+        double dist = p->getDistance();
+        float mag = p->getMagnitude();
+        if (mag<99)
+            cometslist.append(p);
+
+//        cout << p->getName ( 0 ) << ":" << endl;
+//        cout << "RA:   " << ra.format ( " %02hdh %02hdm %05.2fs" ) << endl;
+//        cout << "Dec:  " << dec.format ( "%c%02hd° %02hd' %04.1f\"" ) << endl;
+//        cout << "Con:  " << con << endl;
+//        if ( dist > 0.1 )
+//            cout << "Dist: " << format ( "%.6f AU", dist ) << endl;
+//        else
+//            cout << "Dist: " << format ( "%.0f km", dist * coords.kKmPerAU ) << endl;
+//        cout << "Mag:  " << format ( "%+.2f", mag ) << endl;
+//        cout << "Illum: " << format ( "%.1f%%", p->illumination() * 100.0 ) << endl;
+
+//        cout << endl;
+    }
+    qSort(cometslist.begin(), cometslist.end(), compareVMagData);
+    for (int i = 0; i < cometslist.size(); i++){
+        SSPlanet *p = SSGetPlanetPtr ( cometslist[i] );
+        p->computeEphemeris ( coords );
+        string con = SSConstellation::identify ( p->getDirection() );
+        SSSpherical dir ( p->getDirection() );
+        dir = coords.transform ( kFundamental, kEquatorial, dir );
+        SSHourMinSec ra ( dir.lon );
+        SSDegMinSec dec ( dir.lat );
+        double dist = p->getDistance();
+        float mag = p->getMagnitude();
+
+        QList<QString> names;
+        int lsz = p->getNames().size();
+        for (int i = 0; i < lsz; i++){
+            names.push_back(QString::fromStdString(p->getNames()[i]));
+        }
+//        qDebug() << names;
+//        qDebug() << QString::fromStdString(p->getName ( 0 )) << ":" << QString::fromStdString(format ( "%+.2f", mag )) << endl;
+//        qDebug()<<"===";
+
+
+//                cout << p->getName ( 0 ) << ":" << endl;
+//                cout << "RA:   " << ra.format ( " %02hdh %02hdm %05.2fs" ) << endl;
+//                cout << "Dec:  " << dec.format ( "%c%02hd° %02hd' %04.1f\"" ) << endl;
+//                cout << "Con:  " << con << endl;
+//                if ( dist > 0.1 )
+//                    cout << "Dist: " << format ( "%.6f AU", dist ) << endl;
+//                else
+//                    cout << "Dist: " << format ( "%.0f km", dist * coords.kKmPerAU ) << endl;
+//                cout << "Mag:  " << format ( "%+.2f", mag ) << endl;
+    }
+}
+
+
+void MainWindow::on_pushButton_14_clicked()
+{
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestCometsList( inpath, outpath);
+}
+
+
+
+void MainWindow::CometsListShow( string inputDir, string outputDir )
+{
+    SSObjectVec solsys;
+
+    int numComets = SSImportMPCComets ( inputDir + "/SolarSystem/cometelements", solsys );
+
+    SSDate date ( kGregorian, 0.0, 2020, 4, 15.0, 0, 0, 0.0 );
+    SSTime now = SSTime::fromSystem(); // SSTime ( date );
+    date = SSDate ( now );
+    SSSpherical here = { SSAngle ( SSDegMinSec ( '+', 110, 0, 0 ) ), SSAngle ( SSDegMinSec ( '+', 21, 0, 0 ) ), 0.026 };
+    SSCoordinates coords ( now, here );
+
+    cout << format ( "Test Date: %04d/%02hd/%02hd", date.year, date.month, date.day ) << endl;
+    cout << format ( "Test Time: %02hd:%02hd:%04.1f", date.hour, date.min, date.sec ) << endl;
+    cout << format ( "Test Zone: %+.1f hours", date.zone ) << endl;
+    cout << format ( "Test Longitude: %s", SSDegMinSec ( here.lon ).toString().c_str() ) << endl;
+    cout << format ( "Test Latitude:  %s", SSDegMinSec ( here.lat ).toString().c_str() ) << endl;
+    cout << format ( "Test Altitude:  %.0f m", here.rad * 1000.0 ) << endl << endl;
+    coords.setAberration ( true );
+    coords.setLightTime ( true );
+
+    // Compute and print ephemeris of solar system objects.
+
+    coords.setTime ( now );
+
+    QList<SSPlanet*> cometslist;
+
+    for ( int i = 0; i < solsys.size(); i++ )
+    {
+        SSPlanet *p = SSGetPlanetPtr ( solsys[i] );
+        if ( p == nullptr )
+            continue;
+        p->computeEphemeris ( coords );
+//        string con = SSConstellation::identify ( p->getDirection() );
+//        SSSpherical dir ( p->getDirection() );
+//        dir = coords.transform ( kFundamental, kEquatorial, dir );
+//        SSHourMinSec ra ( dir.lon );
+//        SSDegMinSec dec ( dir.lat );
+//        double dist = p->getDistance();
+        float mag = p->getMagnitude();
+        if (mag<99)
+            cometslist.append(p);
+    }
+    qSort(cometslist.begin(), cometslist.end(), compareVMagData);
+
+    ui->tableWidget->setColumnCount(6);
+    ui->tableWidget->setRowCount(0);
+    ui->tableWidget->setHorizontalHeaderLabels(QStringList()<<"Comet"<<"Mag"<<"con"<<"dist"<<"ra"<<"dec");
+    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);  //整行选中的方式
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);   //禁止修改
+    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);  //设置为可以选中单个
+    ui->tableWidget->verticalHeader()->setVisible(false);   //隐藏列表头
+
+    for (int i = 0; i < cometslist.size(); i++){
+        SSPlanet *p = SSGetPlanetPtr ( cometslist[i] );
+        p->computeEphemeris ( coords );
+        string con = SSConstellation::identify ( p->getDirection() );
+        SSSpherical dir ( p->getDirection() );
+        dir = coords.transform ( kFundamental, kEquatorial, dir );
+        SSHourMinSec ra ( dir.lon );
+        SSDegMinSec dec ( dir.lat );
+        double dist = p->getDistance();
+        float mag = p->getMagnitude();
+
+        QList<QString> names;
+        int lsz = p->getNames().size();
+        for (int i = 0; i < lsz; i++){
+            names.push_back(QString::fromStdString(p->getNames()[i]));
+        }
+
+        //insert
+        if(mag<15){
+        ui->tableWidget->setRowCount(i+1);
+//        ui->tableWidget->setItem(i,0,new QTableWidgetItem(i+1));
+        ui->tableWidget->setItem(i,0,new QTableWidgetItem(QString::fromStdString(p->getName ( 0 ))));
+        ui->tableWidget->setItem(i,1,new QTableWidgetItem(QString::fromStdString(format ( "%+.2f", mag ))));
+        ui->tableWidget->setItem(i,2,new QTableWidgetItem(QString::fromStdString(con)));
+        ui->tableWidget->setItem(i,3,new QTableWidgetItem(QString("%1").arg(dist)));
+        ui->tableWidget->setItem(i,4,new QTableWidgetItem(QString::fromStdString(ra.toString())));
+        ui->tableWidget->setItem(i,5,new QTableWidgetItem(QString::fromStdString(dec.toString())));
+        }
+
+//        qDebug() << names;
+//        qDebug() << QString::fromStdString(p->getName ( 0 )) << ":" << QString::fromStdString(format ( "%+.2f", mag )) << endl;
+//        qDebug()<<"===";
+    }
+}
+
+
+void MainWindow::on_pushButton_15_clicked()
+{
+////    string inpath = ui->lineEdit->text().toStdString();
+////    string outpath = ui->lineEdit_2->text().toStdString();
+    string inpath = (QDir::homePath()+"/SSData").toStdString();
+    string outpath = (QDir::homePath()+"").toStdString();
+//    TestCometsList(inpath, outpath);
+    CometsListShow(inpath, outpath);
+
+
+
+}
+
+void MainWindow::spendtime(){
+    QCoreApplication::processEvents();
+    string inpath = ui->lineEdit->text().toStdString();
+    string outpath = ui->lineEdit_2->text().toStdString();
+    TestDeepSky(inpath, outpath);
+    inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestStars (inpath, outpath);
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestEphemeris ( inpath, outpath );
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestSatellites ( inpath, outpath );
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestSolarSystem( inpath, outpath );
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestConstellations( inpath, outpath );
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestJPLDEphemeris( inpath);
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestELPMPP02( inpath);
+        inpath = ui->lineEdit->text().toStdString();
+        outpath = ui->lineEdit_2->text().toStdString();
+        TestVSOP2013( inpath);
+        TestPrecession();
+        TestTime();
+        QTime t;
+        t.start();
+        while(t.elapsed()<10000){
+    //        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);  //**注释1**
+//            QCoreApplication::processEvents();  //**注释2**
+            }
+}
+
+void MainWindow::on_pushButton_16_clicked()
+{
+    QFuture<void> future = QtConcurrent::run(this,&MainWindow::spendtime);
+    while(!future.isFinished())
+    {
+        QApplication::processEvents(QEventLoop::AllEvents, 100);
+    }
+}
+
+bool copyDirectoryFiles(const QString &fromDir, const QString &toDir, bool coverFileIfExist)
+{
+    QDir sourceDir(fromDir);
+    QDir targetDir(toDir);
+    if(!targetDir.exists()){    /**< 如果目标目录不存在，则进行创建 */
+        if(!targetDir.mkdir(targetDir.absolutePath()))
+            return false;
+    }
+
+    QFileInfoList fileInfoList = sourceDir.entryInfoList();
+    foreach(QFileInfo fileInfo, fileInfoList){
+        if(fileInfo.fileName() == "." || fileInfo.fileName() == "..")
+            continue;
+
+        if(fileInfo.isDir()){    /**< 当为目录时，递归的进行copy */
+            if(!copyDirectoryFiles(fileInfo.filePath(),
+                targetDir.filePath(fileInfo.fileName()),
+                coverFileIfExist))
+                return false;
+        }
+        else{            /**< 当允许覆盖操作时，将旧文件进行删除操作 */
+            if(coverFileIfExist && targetDir.exists(fileInfo.fileName())){
+                targetDir.remove(fileInfo.fileName());
+            }
+
+            /// 进行文件copy
+            if(!QFile::copy(fileInfo.filePath(),
+                targetDir.filePath(fileInfo.fileName()))){
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
+void MainWindow::on_pushButton_17_clicked()
+{
+    ui->pushButton_17->setText("Copying...");
+    ui->pushButton_15->setDisabled(true);
+    QCoreApplication::processEvents();
+    bool ok = copyDirectoryFiles("assets:/SSData",QDir::homePath()+"/SSData");
+    qDebug()<<"silas:copy:"<<ok;
+    if (ok)
+        ui->textBrowser->append("silas:copy:ok");
+    else
+        ui->textBrowser->append("silas:copy:false");
+    ui->pushButton_17->setText("Copy");
+    ui->pushButton_15->setDisabled(false);
+    QCoreApplication::processEvents();
+
+}
+
+void MainWindow::on_pushButton_18_clicked()
+{
+
+    QDir targetDir(QDir::homePath()+"/SSData/SolarSystem");
+    if(!targetDir.exists()){    /**< 如果目标目录不存在，则进行创建 */
+        if(!targetDir.mkdir(targetDir.absolutePath()))
+            qDebug()<<"create fail";
+    }
+    ui->pushButton_18->setText("Downloading...");
+    ui->pushButton_15->setDisabled(true);
+    QCoreApplication::processEvents();
+    NewDownloader *d2 = new NewDownloader();
+    d2->startdl("http://astro.vanbuitenen.nl/cometelements?format=mpc&mag=obs",QDir::homePath()+"/SSData/SolarSystem/cometelements");
+    qDebug()<<"push fin";
+    connect(d2->downloadReply,&QNetworkReply::finished,this,&MainWindow::update);
+}
+
+void MainWindow::on_pushButton_19_clicked()
+{
+    QString strPath = QDir::homePath()+"/SSData/SolarSystem/cometelements";
+    if (strPath.isEmpty() || !QDir().exists(strPath))//是否传入了空的路径||路径是否存在
+        qDebug()<<"delete"<< false;
+    QFileInfo FileInfo(strPath);
+    bool suc;
+    if (FileInfo.isFile())//如果是文件
+        suc = QFile::remove(strPath);
+    else if (FileInfo.isDir())//如果是文件夹
+    {
+        QDir qDir(strPath);
+        suc = qDir.removeRecursively();
+    }
+    qDebug()<<"del success:"<<suc;
+}
+
+void MainWindow::on_pushButton_20_clicked()
+{
+    QDir targetDir(QDir::homePath()+"/SSData/SolarSystem");
+    if(!targetDir.exists()){    /**< 如果目标目录不存在，则进行创建 */
+        if(!targetDir.mkdir(targetDir.absolutePath()))
+            qDebug()<<"create fail";
+    }
+    ui->pushButton_20->setText("Downloading...");
+    ui->pushButton_15->setDisabled(true);
+    QCoreApplication::processEvents();
+
+    NewDownloader *d2 = new NewDownloader();
+    d2->startdl("https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt",QDir::homePath()+"/SSData/SolarSystem/cometelements");
+    qDebug()<<"push fin";
+    connect(d2->downloadReply,&QNetworkReply::finished,this,&MainWindow::update);
+}
+
+
+void MainWindow::update()
+{
+    ui->pushButton_18->setText("DL: GVB");
+    ui->pushButton_20->setText("DL: MPC");
+    ui->pushButton_15->setDisabled(false);
+    QCoreApplication::processEvents();
 }

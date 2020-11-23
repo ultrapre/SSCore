@@ -1,4 +1,4 @@
-// SSImportMPC.cpp
+﻿// SSImportMPC.cpp
 // SSCore
 //
 // Created by Tim DeBenedictis on 3/24/20.
@@ -37,8 +37,8 @@ int SSImportMPCComets ( const string &filename, SSObjectVec &comets )
         // col 1-4: periodic or interstellar comet number, denoted with 'P' or 'I' in column 5.
         // col 6-12: provisional designation. Both currently unused.
 
-        string field = line.substr ( 0, 4 );
-        field = line.substr ( 5, 7 );
+        string field = trim(line.substr ( 0, 4 ));
+        field = trim(line.substr ( 5, 7 ));
         
         // col 15-18: year/month/day of perihelion passage (TDT)
 
@@ -101,8 +101,14 @@ int SSImportMPCComets ( const string &filename, SSObjectVec &comets )
         
         if ( number )
         {
+            //silas
             size_t pos = field.find ( "P/" );
-            string name = ( pos == string::npos ) ? field : field.substr ( pos + 2, string::npos );
+//            string name = ( pos == string::npos ) ? field : field.substr ( pos + 2, string::npos );
+            string name = field.substr ( 0, pos + 1 );
+            if ( ! name.empty() )
+                names.push_back ( name );
+
+            name = field.substr ( pos + 2, string::npos );
             if ( ! name.empty() )
                 names.push_back ( name );
         }

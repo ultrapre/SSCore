@@ -1,4 +1,4 @@
-// SSPlanet.cpp
+﻿// SSPlanet.cpp
 // SSCore
 //
 // Created by Tim DeBenedictis on 3/15/20.
@@ -414,7 +414,7 @@ float SSPlanet::computeAsteroidMagnitude ( double rad, double dist, double phase
 // Comet's absolute magnitude (h) is visual magnitude at 1 AU from Earth and Sun.
 // Comet's magnitude parameter (k) defines how it darkens as distance from Sun increases.
 // Formula from Jean Meeus, "Astronomical Algorithms", p. 216.
-
+#include <QDebug>
 float SSPlanet::computeCometMagnitude ( double rad, double dist, double h, double k )
 {
     return h + 5.0 * log10 ( dist ) + 2.5 * k * log10 ( rad );
