@@ -36,7 +36,7 @@ jobs:
       with:
         target: 'android'
         version: '5.15.1'
-        abi: 'armeabi-v7a'
+        abi: 'armv7'
         modules: 'qtcharts qtwebengine qtscript'
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
     - name: qmake apk
