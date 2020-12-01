@@ -35,8 +35,8 @@ jobs:
       uses: jurplel/install-qt-action@v2
       with:
         target: 'android'
-        version: '5.15.1'
-        arch: 'Armeabi-v7a'
+        version: '5.12.6'
+        arch: 'android_armv7'
         modules: 'qtcharts qtwebengine qtscript'
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
     - name: qmake apk
