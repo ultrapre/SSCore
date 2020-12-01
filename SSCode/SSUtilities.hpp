@@ -30,7 +30,7 @@ template <typename T>  const T &clamp ( const T &value, const T &low, const T &h
 
 #ifdef ANDROID
 extern "C" FILE *android_fopen ( const char *fname, const char *mode );
-#define fopen(name,mode) android_fopen(name,mode)
+//#define fopen(name,mode) android_fopen(name,mode)
 #endif
 
 #define M_2PI (2*M_PI)
