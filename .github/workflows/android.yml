@@ -10,15 +10,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    
-    #strategy:
-    #  matrix:
-    #    abi: ['armeabi-v7a', 'arm64-v8a', 'x86_64']
-    #    # 24 : Android 7.1, 26: Android 8, 28: Android 9, 29: Android 10
-    #    target-api: ['29']
-    #    build-tools: ['30.0.2']
-    #    qt-version: ['5.15.1']
-    #    build-type: ['Release']
+
     steps:
     - uses: actions/checkout@v2
     - name: Checkout submodules
@@ -35,8 +27,7 @@ jobs:
       uses: jurplel/install-qt-action@v2
       with:
         target: 'android'
-        version: '5.12.6'
-        arch: 'android_armv7'
+        version: '5.15.1'
         modules: 'qtcharts qtwebengine qtscript'
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
     - name: qmake apk
@@ -55,3 +46,5 @@ jobs:
       with:
         name: Debug-APK
         path: cd SSTest/QtProjects/android-build//build/outputs/apk/debug/android-build-debug.apk
+        
+        
